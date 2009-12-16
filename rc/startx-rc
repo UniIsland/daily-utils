@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# startup xserver at the end of runlevel 2 for the user defined.
+#
+# $cat ~/bin/rc_startx.sh | sudo tee /etc/init.d/rc_startx.sh
+# $sudo chmod +x /etc/init.d/rc_startx.sh
+# $sudo update-rc.d rc_startx.sh start 99 2 .
+
+USER=mazelord
+
+if [[ $UID -ne 0 ]]; then
+  echo "become root to run this script."
+  exit 1
+fi
+
+case "$1" in
+	start)
+		XSession="` update-alternatives --display x-session-manager  | sed -n 2p | awk '{print $5}' | xargs basename `"
+		echo -n "Starting X session for the user $USER: "
+		if [[ ` ps -ef | grep "startx" | grep -v startx-rc | grep -v grep` ]]
+		then
+			echo "... already running!"
+		else
+			su -l $USER -c "(startx > /dev/null 2>&1 &)"
+			echo "$XSession."
+		fi
+	;;
+	stop)
+	;;
+	*)
+		echo "Usage: $0 start"
+		exit 3
+        ;;
+esac
+exit 0
+

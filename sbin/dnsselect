@@ -1,0 +1,71 @@
+#!/bin/bash
+
+if [[ $UID -ne 0 ]]; then
+  echo "become root to run this script."
+  exit 1
+fi
+
+if [[ `grep forwarders /etc/bind/named.conf.options | wc -l` -ne "1" ]]; then
+	echo "forwarders option not correctly set in named.conf.options."
+	exit 2
+fi
+
+LN=`grep -n forwarders /etc/bind/named.conf.options | awk -F ":" '{ print $1 }'`
+if [[ -n `tail --lines=+$[LN+1] /etc/bind/named.conf.options | egrep [a-z]` ]]; then
+	echo "forwarders option should be set in the last lines of named.conf.options."
+	exit 2
+fi
+
+HomeRouter="192.168.1.25"
+OpenDNS1="208.67.222.222"
+OpenDNS2="208.67.220.220"
+PKUdns1="162.105.129.26"
+PKUdns2="162.105.129.27"
+
+case $1 in
+	home)
+		Forwarder="$HomeRouter"
+	;;
+	opendns)
+		Forwarder="$OpenDNS1;\n    $OpenDNS2"
+	;;
+	pku)
+		Forwarder="$PKUdns1;\n    $PKUdns2"
+	;;
+	isp)
+		Forwarder="`tail --lines=+2 /etc/resolv.conf | head -1 | awk '{ print $2 }'`"
+		ISPdns2="`tail --lines=+3 /etc/resolv.conf | head -1 | awk '{ print $2 }'`"
+		if [[ -n $ISPdns2 ]]; then
+			Forwarder="$Forwarder;\n    $ISPdns2"
+		fi
+	;;
+	set)
+		echo 'enter the name server ip address: (separate multiple entries with ",")'
+		read CustomDNS
+		if [[ `echo "$CustomDNS" | grep ","` ]]
+		then
+			Forwarder="`echo $CustomDNS | awk -F, '{ print $2 }'`"
+			Forwarder="`echo $CustomDNS | awk -F, '{ print $1 }'`;\n    $Forwarder"
+		else
+			Forwarder="$CustomDNS"
+		fi
+	;;
+	now)
+		echo -e "current DNS forwarders:"
+		echo "`tail --lines=+$[LN+1] /etc/bind/named.conf.options | head --lines=-2`"
+		exit 0
+	;;
+	*)
+		echo "Usage: $0 (home|opendns|pku|isp|set|now)"
+		exit 1
+;;
+esac
+
+head -n $LN /etc/bind/named.conf.options | tee /etc/bind/named.conf.options > /dev/null
+echo -e "    $Forwarder;\n    };\n};" >> /etc/bind/named.conf.options
+echo -e "DNS forwarders changed to:"
+echo "`tail --lines=+$[LN+1] /etc/bind/named.conf.options | head --lines=-2`"
+
+/etc/init.d/bind9 restart
+
+exit 0

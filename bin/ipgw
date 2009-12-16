@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# pku ipgw connector
+
+# connection range: "2" for domestic, "1" for international
+# timeout:
+RANGE=2
+TimeOut=0
+
+# read account info
+PasswdFile=$HOME/.config/ipgw.conf
+[ -e "$PasswdFile" ] || {
+	echo "No account infomation available. Please specify."
+	read -p "Username: " Username
+	read -s -p "Password: " Password
+	echo -e "$Username\n$Password" | base64 > "$PasswdFile"
+	chmod 600 "$PasswdFile"
+}
+Username="`base64 -d "$PasswdFile" | head -n 1`"
+Password="`base64 -d "$PasswdFile" | tail -n 1`"
+
+wget -q --no-proxy -t 3 -O- --no-check-certificate  "https://ipgw.pku.edu.cn/ipgw/ipgw.ipgw?uid=$Username&password=$Password&timeout=$TimeOut&range=$RANGE&operation=disconnectall" | grep -q "SUCCESS=YES" && echo "Successfully disconnected." || echo "Failed to disconnect."
+
+wget -q --no-proxy -t 3 -O- --no-check-certificate  "https://ipgw.pku.edu.cn/ipgw/ipgw.ipgw?uid=$Username&password=$Password&timeout=$TimeOut&range=$RANGE&operation=connect" | grep "SUCCESS=YES" | egrep -o BALANCE..... && echo "Successfully connected." || echo "Failed to connect."

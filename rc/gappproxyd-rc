@@ -1,0 +1,37 @@
+#!/bin/bash
+
+User=neo
+ScreenName=gappproxyd
+DaemonName="Google App Proxy Client Daemon"
+DaemonCommand="python2.6 /usr/local/src/gappproxy/localproxy/proxy.py"
+
+if [[ $UID -ne 0 ]]; then
+  echo "become root to run this script."
+  exit 1
+fi
+
+case "$1" in
+	start)
+		echo -n "Starting $DaemonName: "
+		if [[ `ls -R1 /var/run/screen/ | grep $ScreenName` ]]; then
+			echo "... already running."
+		else
+			su $User -c "screen -dmS $ScreenName $DaemonCommand"
+			echo "$ScreenName."
+		fi
+		;;
+	stop)
+		echo -n "Stopping $DaemonName: "
+		if [[ `ls -R1 /var/run/screen/ | grep $ScreenName` ]]; then
+			ls -R1 /var/run/screen/ | grep $ScreenName | awk -F. '{ print $1 }' | xargs kill
+			echo "$ScreenName."
+		else
+			echo "... not running."
+		fi
+		;;
+	*)
+		echo "Usage: $0 {start|stop}"
+		exit 3
+		;;
+esac
+exit 0

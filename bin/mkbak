@@ -1,0 +1,91 @@
+#!/bin/bash
+
+USAGE="Usage: $0 [-s|-r|-d|-R] FILE [FILE] ..."
+MODE=0
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+#	--help)
+#		shift ; show_usage ;;
+#	--version)
+#		shift ; show_version ;;
+#	--)
+#		shift ; break ;;
+	-s)
+		shift ; MODE=1 ;;
+	-r)
+		shift ; MODE=2 ;;
+	-d)
+		shift ; MODE=3 ;;
+	-R)
+		shift ; MODE=4 ;;
+	-*)
+		echo "mkbak: ${1}: invalid option" >&2
+		echo "$USAGE" >&2
+		exit 2 ;;
+	*)              break ;;
+	esac
+done
+
+if [ $# -eq 0 ]; then
+	echo "$USAGE" >&2 ; exit 1
+fi
+
+while [ $# -gt 0 ]; do
+	case "$MODE" in
+	0)
+		if ! [ -e "$1" ]; then
+			echo "$1 does not exist."
+			shift
+			continue
+		fi
+		ext=$(date +%y%m%d.%H%M%S)
+		bak="$1.bak.$ext"
+		cp --preserve=mode,ownership,timestamps "$1" "$bak"
+		chmod -x "$bak"
+		echo "backup saved: $bak "
+		;;
+	1)
+		if ! [ -e "$1" ]; then
+			echo "$1 does not exist."
+			shift
+			continue
+		fi
+		bak="${1}~"
+		cp --preserve=mode,ownership,timestamps "$1" "$bak"
+		chmod -x "$bak"
+		echo "backup saved: $bak "
+		;;
+	2)
+		if ! [ -e "$1" ]; then
+			echo "$1 does not exist."
+			shift
+			continue
+		fi
+		if [[ `ls -t "${1}.bak"*` ]]; then
+			bak="`ls -t -1 "${1}.bak"* | head -1`"
+			cat "$bak" > "$1"
+			echo "$1 recovered from $bak."
+		else
+			echo "no backup files for $1 found."
+		fi ;;
+	3)
+		if [ -e "$1" ]; then
+			mv "$1" "${1}~"
+			echo "$1 renamed to ${1}~."
+		else
+			echo "$1 does not exist."
+		fi ;;
+	4)
+		if [ -e "$1" ]; then
+			FN="`echo -n "$1" | sed 's/~$//'`"
+			mv "$1" "FN"
+			echo "$1 renamed to $FN."
+		else
+			echo "$1 does not exist."
+		fi ;;
+	esac
+	shift
+done
+
+exit 0
