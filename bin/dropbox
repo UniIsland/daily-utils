@@ -1,0 +1,4 @@
+#!/bin/bash
+
+/home/misc/lib/dropbox-dist/dropbox &
+
